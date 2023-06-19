@@ -74,7 +74,7 @@ do -- Patching/Hooking
 end
 
 do -- Performance
-    setfpscap(PERF["FPS Cap"] or 1010)
+    setfpscap(PERF["FPS Cap"] or 10)
     game:GetService("RunService"):Set3dRenderingEnabled(not PERF["Disable Rendering"])
     if PERF["Downgraded Quality"] then
         local lighting = game.Lighting
