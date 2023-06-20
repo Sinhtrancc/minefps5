@@ -243,7 +243,7 @@ function farmMystic()
     local function GetCoinsInMM()
         local coins = {}
         for i,v in pairs(Network.Invoke("Get Coins")) do
-            if v.a == "Mystic Mine" and v.n ~= "Mystic Mine Diamond Mine Giant Chest" then
+            if v.a == "Mystic Mine" and v.n ~= "Cyber Cavern Diamond Mine Giant Chest" then
                 v.id = i
                 table.insert(coins, v)
             end
@@ -258,7 +258,7 @@ function farmMystic()
     end
 
     if WorldCmds.HasLoaded() then
-        local areaTeleport = WorldCmds.GetMap().Teleports:FindFirstChild("Mystic Mine")
+        local areaTeleport = WorldCmds.GetMap().Teleports:FindFirstChild("Cyber Cavern")
 		if areaTeleport then
 		    LocalPlayer.Character:PivotTo(areaTeleport.CFrame + areaTeleport.CFrame.UpVector * (LocalPlayer.Character.Humanoid.HipHeight + LocalPlayer.Character.HumanoidRootPart.Size.Y / 2))
 		end
