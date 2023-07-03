@@ -23,8 +23,8 @@
         -- Mainly farm Orange/Apple fruit while farming Diamonds
         -- Mainly farm Apple/Banana/ while opening Egg
         ["Enable"] = true,
-        ["Farm when under"] = 50,
-        ["Farm until"] = 100,
+        ["Farm when under"] = 100,
+        ["Farm until"] = 120,
     },
     ["Auto Mailbox"] = { -- Auto send Diamonds to a person thru Mailbox when your Diamonds more than set diamond
         ["Enable"] = false,
@@ -47,12 +47,12 @@
         ["Player nearby"] = false, -- Will hop to low player server if there's a player nearby Mystic Mine (2m cooldown)
         ["Out of diamond"] = false, -- Will hop to low player server if there are no diamond left to farm
     },
-    ["Farm Cooldown"] = 0, -- Delay between switch to farm another thing (higher = less crashing)
+    ["Farm Cooldown"] = 0,5 -- Delay between switch to farm another thing (higher = less crashing)
     ["Send all"] = false, -- Send all pet to break or not, false will send single to break
     ["Performance Mode"] = false, -- Enable if you want to AFK overnight, farm will be slower but low chance crashing roblox 
     ["Swap to Cyber Cavern"] = true, -- Will swap to Cyber Cavern if Mystic Mine out of Diamonds
     ["Legit Mode"] = false, -- Walk to points on map legit like an normal player, recommended enable with Performance Mode, farm will be slower
-    ["White Screen"] = false, -- Enable for disable game's rendering for less CPU/GPU usage
+    ["White Screen"] = true, -- Enable for disable game's rendering for less CPU/GPU usage
     ["Discord Webhook"] = {
         ["Stats Tracker"] = {
             ["URL"] = "Stat Tracker Webhook URL here",
