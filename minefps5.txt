@@ -1,69 +1,304 @@
-        Collapse methods:
-        + "Stand Still" -- Do nothing (still check for daycare/rewards)
-        + "Farm Fruit" -- Farm fruits
-        + "Volcano Chest" -- Open Volcano Egg/Farm Pirate Cove Chest
-        + "Mansion Egg" -- Open Dog Egg/Farm Dog Mansion Chest
-    ]]
-    ["Mine Collapsed Method"] = {
-        ["Method"] = "Farm Fruit",
-        ["Open Amount"] = 8, -- 1 or 3 or 8
-        ["Open Golden Egg"] = false, -- Will open Golden egg instead
-    },
-    ["Auto Triple Damage Boost"] = { -- Active when Farm Fruit/Diamond
-        ["Boost"] = true,
-        ["Server"] = true
-    },
-    ["Auto Boost"] = { -- Active when Open Egg
-        ["Super Lucky"] = true,
-        ["Server Lucky"] = true,
-        ["Ultra Lucky"] = true,
-        ["Triple Coin"] = true
-    },
-    ["Auto Farm Fruit"] = {
-        -- Mainly farm Orange/Apple fruit while farming Diamonds
-        -- Mainly farm Apple/Banana/ while opening Egg
+getgenv().Settings = {
+    ["Farm Speed"] = 0.05,
+    ["Pet Sending"] = "All", -- All or Single
+    ["Minimum Oranges"] = 100,
+    ["Maximum Oranges"] = 200,
+    ["Performance"] = {
+        ["FPS Cap"] = 10,
+        ["Disable Rendering"] = true,
+        ["Downgraded Quality"] = true
+["Auto Mailbox"] = { -- Auto send Diamonds to a person thru Mailbox when your Diamonds more than set diamond
         ["Enable"] = true,
-        ["Farm when under"] = 100,
-        ["Farm until"] = 120,
-    },
-    ["Auto Mailbox"] = { -- Auto send Diamonds to a person thru Mailbox when your Diamonds more than set diamond
-        ["Enable"] = false,
         ["Send to"] = "onswitchsne5366",
-        ["Above amount"] = 100000000000
-    },
-    ["Auto Claim Mailbox"] = true, -- Claim Diamonds on the account received the Diamonds from Auto Mailbox
-    ["Auto Daycare"] = true, -- Auto Claim Daycare and Enroll unequipped/unlocked Pets in your Inventory
-    ["Auto Collect Rewards"] = true, -- Auto Collect Rank/VIP Rewards
-    ["Auto Leave"] = {
-        ["Ping Froze"] = true,
-        ["Got kicked"] = true,
-        ["Leave Timer"] = {
-            ["Enable"] = false,
-            ["After seconds"] = 3600 -- Auto Leave the server after AFK in for set seconds 
-        }
-    },
-    ["Hop Server"] = {
-        ["Hop Server Cooldown"] = 900, -- Wait set second after Hop Server
-        ["Player nearby"] = false, -- Will hop to low player server if there's a player nearby Mystic Mine (2m cooldown)
-        ["Out of diamond"] = false, -- Will hop to low player server if there are no diamond left to farm
-    },
-    ["Farm Cooldown"] = 0,5 -- Delay between switch to farm another thing (higher = less crashing)
-    ["Send all"] = false, -- Send all pet to break or not, false will send single to break
-    ["Performance Mode"] = false, -- Enable if you want to AFK overnight, farm will be slower but low chance crashing roblox 
-    ["Swap to Cyber Cavern"] = true, -- Will swap to Cyber Cavern if Mystic Mine out of Diamonds
-    ["Legit Mode"] = false, -- Walk to points on map legit like an normal player, recommended enable with Performance Mode, farm will be slower
-    ["White Screen"] = true, -- Enable for disable game's rendering for less CPU/GPU usage
-    ["Discord Webhook"] = {
-        ["Stats Tracker"] = {
-            ["URL"] = "Stat Tracker Webhook URL here",
-            ["Cooldown"] = 3600, -- Will notify every set seconds
-        }, 
-        ["Hop Server"] = "Hop Server Logs Webhook URL here",
-        ["Mailbox"] = "Claim/Send Gift Logs Webhook URL here",
-        ["Mine Collapse"] = {
-            ["URL"] = "Mine Collapsed Logs Webhook URL here",
-            ["Daily Collapse"] = true, -- Only notify if the collapse are daily (above 10m)
-        },
-        ["Huge Hatch"] = "Huge hatched Logs Webhook URL here"
-    },
+        ["Above amount"] = 50000000000
+["Auto Claim Mailbox"] = true, -- Claim Diamonds on the account received the Diamonds from Auto Mailbox
+    }
 }
+
+-- dont touch below pls
+
+local PERF = Settings["Performance"]
+
+if not game:IsLoaded() then game.Loaded:Wait() end
+local Lib = require(game:GetService("ReplicatedStorage"):WaitForChild("Framework"):WaitForChild("Library"))
+repeat task.wait() until Lib.Loaded
+
+-- // Services //
+local RS = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- // PSX Libraries //
+local Library = RS:WaitForChild("Library")
+local ClientModule = Library:WaitForChild("Client")
+local Directory = require(Library:WaitForChild("Directory"))
+
+local Network = require(ClientModule:WaitForChild("Network"))
+local Save = require(ClientModule:WaitForChild("Save"))
+local WorldCmds = require(ClientModule:WaitForChild("WorldCmds"))
+local PetCmds = require(ClientModule:WaitForChild("PetCmds"))
+local ServerBoosts = require(ClientModule:WaitForChild("ServerBoosts"))
+
+-- Anti AFK
+for _,v in pairs(getconnections(LocalPlayer.Idled)) do
+    v:Disable()
+end
+
+do -- Patching/Hooking
+    if (not getgenv().hooked) then
+        hookfunction(debug.getupvalue(Network.Fire, 1) , function(...) return true end)
+        hookfunction(debug.getupvalue(Network.Invoke, 1) , function(...) return true end)
+        getgenv().hooked = true
+    end
+
+    local Blunder = require(RS:FindFirstChild("BlunderList", true))
+    local OldGet = Blunder.getAndClear
+
+    setreadonly(Blunder, false)
+
+    Blunder.getAndClear = function(...)
+        local Packet = ...
+        for i,v in next, Packet.list do
+            if v.message ~= "PING" then
+                table.remove(Packet.list, i)
+            end
+        end
+        return OldGet(Packet)
+    end
+
+    local Audio = require(RS:WaitForChild("Library"):WaitForChild("Audio"))
+    hookfunction(Audio.Play, function(...)
+        return {
+            Play = function() end,
+            Stop = function() end,
+            IsPlaying = function() return false end
+        }
+    end)
+
+    print("Hooked")
+end
+
+do -- Performance
+    setfpscap(PERF["FPS Cap"] or 15)
+    game:GetService("RunService"):Set3dRenderingEnabled(not PERF["Disable Rendering"])
+    if PERF["Downgraded Quality"] then
+        local lighting = game.Lighting
+        lighting.GlobalShadows = false
+        lighting.FogStart = 0
+        lighting.FogEnd = 0
+        lighting.Brightness = 0
+        settings().Rendering.QualityLevel = "Level01"
+
+        for _,v in pairs(game:GetDescendants()) do
+            if v:IsA("Part") or v:IsA("Union") or v:IsA("CornerWedgePart") or v:IsA("TrussPart") then
+                v.Material = "Plastic"
+                v.Reflectance = 0
+            elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+                v.Lifetime = NumberRange.new(0)
+            elseif v:IsA("Explosion") then
+                v.BlastPressure = 1
+                v.BlastRadius = 1
+            elseif v:IsA("Fire") or v:IsA("SpotLight") or v:IsA("Smoke") or v:IsA("Sparkles") then
+                v.Enabled = false
+            elseif v:IsA("MeshPart") then
+                v.Material = "Plastic"
+                v.Reflectance = 0
+            end
+        end
+
+        for _,e in pairs(lighting:GetChildren()) do
+            if e:IsA("BlurEffect") or e:IsA("SunRaysEffect") or e:IsA("ColorCorrectionEffect") or e:IsA("BloomEffect") or e:IsA("DepthOfFieldEffect") then
+                e.Enabled = false
+            end
+        end
+    end
+end
+
+do -- Collection
+    coroutine.wrap(function() while task.wait(0.1) do
+        -- // Lootbags
+        for _,v in pairs(workspace["__THINGS"].Lootbags:GetChildren()) do
+            Network.Fire("Collect Lootbag", v:GetAttribute("ID"), v.CFrame.p)
+        end
+
+        -- // Orbs
+        local orbs = workspace["__THINGS"].Orbs:GetChildren()
+        for i,v in pairs(orbs) do orbs[i] = v.Name end
+        if #orbs > 0 and orbs[1] ~= nil then
+            Network.Fire("Claim Orbs", orbs)
+        end
+
+        -- // Gifts
+        for _,v in pairs(LocalPlayer.PlayerGui.FreeGifts.Frame.Container.Gifts:GetDescendants()) do
+            if v.ClassName == "TextLabel" and v.Text == "Redeem!" then
+                local giftName = v.Parent.Name
+                local number = string.match(giftName, "%d+")
+                Network.Invoke("Redeem Free Gift", tonumber(number))
+            end
+        end
+    end end)()
+
+    coroutine.wrap(function() while task.wait(10) do
+        useServerBoost("Triple Damage")
+        useBoost("Triple Damage")
+    end end)()
+end
+
+local function shuffleTable(tbl)
+    for i = #tbl, 2, -1 do local j = math.random(i) tbl[i], tbl[j] = tbl[j], tbl[i] end 
+    return tbl 
+end
+
+function useBoost(boost)
+    if Save.Get().Boosts[boost] and Save.Get().Boosts[boost] > 300 then return end
+
+    if Save.Get().BoostsInventory[boost] then
+        Network.Fire("Activate Boost", boost)
+    end
+end
+
+function useServerBoost(boost)
+    local active = ServerBoosts.GetActiveBoosts()
+
+    if active[boost] and active[boost]["totalTimeLeft"] > 300 then return end
+
+    if Save.Get().BoostsInventory[boost] > 20 then
+        Network.Fire("Activate Server Boost", boost)
+    end
+end
+
+function getOrangeCount()
+    local boosts = LocalPlayer.PlayerGui.Main.Boosts
+    return boosts:FindFirstChild("Orange") and tonumber(boosts.Orange.TimeLeft.Text:match("%d+")) or 0
+end
+
+function getEquippedPets()
+    local pets = PetCmds.GetEquipped()
+    for i,v in pairs(pets) do pets[i] = v.uid end
+    return pets
+end
+
+function farmCoin(coinId, petUIDs)
+    local pets = (petUIDs == nil and getEquippedPets()) or (typeof(petUIDs) ~= "table" and { petUIDs }) or petUIDs
+    Network.Invoke("Join Coin", coinId, pets)
+    for _,pet in pairs(pets) do
+        Network.Fire("Farm Coin", coinId, pet)
+    end
+end
+
+function farmFruits()
+    local function isFruitValid(coinObj)
+        return Directory.Coins[coinObj.n].breakSound == "fruit"
+    end
+
+    local function GetFruits()
+        local fruits = {}
+        for i,v in pairs(Network.Invoke("Get Coins")) do
+            if isFruitValid(v) and WorldCmds.HasArea(v.a) then
+                v.id = i
+                table.insert(fruits, v)
+            end
+        end
+        return fruits
+    end
+
+    local function GetCoinsInPV()
+        local coins = {}
+        for i,v in pairs(Network.Invoke("Get Coins")) do
+            if v.a == "Pixel Vault" then 
+                v.id = i
+                table.insert(coins, v)
+            end
+        end
+        table.sort(coins, function(a, b) return a.h < b.h end)
+        return coins
+    end
+
+    local function GetAllInPV()
+        local f = GetFruits()
+        for _,v in pairs(GetCoinsInPV()) do
+            if v ~= nil then table.insert(f, v) end
+        end
+        return f
+    end
+
+    if WorldCmds.HasLoaded() and WorldCmds.Get() ~= "Pixel" then
+        WorldCmds.Load("Pixel")
+    end
+
+    if WorldCmds.HasLoaded() then
+        local areaTeleport = WorldCmds.GetMap().Teleports:FindFirstChild("Pixel Vault")
+		if areaTeleport then
+		    LocalPlayer.Character:PivotTo(areaTeleport.CFrame + areaTeleport.CFrame.UpVector * (LocalPlayer.Character.Humanoid.HipHeight + LocalPlayer.Character.HumanoidRootPart.Size.Y / 2))
+		end
+    end
+
+    local fruits = GetAllInPV()
+    if #fruits == 0 then return end
+    for _,pet in pairs(getEquippedPets()) do
+        if #fruits == 0 then return end
+        local c = fruits[1]
+        task.spawn(farmCoin, c.id, { pet })
+        table.remove(fruits, 1)
+        task.wait(Settings["Farm Speed"])
+    end
+end
+
+function farmMystic()
+    local function GetCoinsInMM()
+        local coins = {}
+        for i,v in pairs(Network.Invoke("Get Coins")) do
+            if v.a == "Mystic Mine" and v.n ~= "Mystic Mine Diamond Mine Giant Chest" then
+                v.id = i
+                table.insert(coins, v)
+            end
+        end
+        --return shuffleTable(coins)
+        table.sort(coins, function(a, b) return (a.b and a.b.l[1].m or 1) > (b.b and b.b.l[1].m or 1) end)
+        return coins
+    end
+
+    if WorldCmds.HasLoaded() and WorldCmds.Get() ~= "Diamond Mine" then
+        WorldCmds.Load("Diamond Mine")
+    end
+
+    if WorldCmds.HasLoaded() then
+        local areaTeleport = WorldCmds.GetMap().Teleports:FindFirstChild("Mystic Mine")
+		if areaTeleport then
+		    LocalPlayer.Character:PivotTo(areaTeleport.CFrame + areaTeleport.CFrame.UpVector * (LocalPlayer.Character.Humanoid.HipHeight + LocalPlayer.Character.HumanoidRootPart.Size.Y / 2))
+		end
+    end
+
+    local coins = GetCoinsInMM()
+    if #coins == 0 then return end
+    local pets = Settings["Pet Sending"] == "Single" and getEquippedPets() or {getEquippedPets()}
+    for _,pet in pairs(pets) do
+        if #coins == 0 then return end
+        local c = coins[1]
+        if not c then
+            table.remove(coins, 1)
+            continue
+        end
+        task.spawn(farmCoin, c.id, typeof(pet) == "table" and pet or { pet })
+        table.remove(coins, 1)
+        task.wait(Settings["Farm Speed"])
+    end
+end
+
+do -- Main
+    coroutine.wrap(function()
+        while task.wait() do
+            if getOrangeCount() < Settings["Minimum Oranges"] then
+                repeat
+                    farmFruits()
+                    task.wait(Settings["Farm Speed"] or 0.04)
+                until getOrangeCount() >= Settings["Maximum Oranges"]
+            else
+                repeat
+                    farmMystic()
+                    task.wait(Settings["Farm Speed"] or 0.04)
+                until getOrangeCount() < Settings["Minimum Oranges"]
+            end
+        end
+    end)()
+end
